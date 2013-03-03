@@ -36,6 +36,7 @@ class Process
         );
 
         $this->myHandler->open(__DIR__.'\sessions','');
+		
         //global $session;
         //check whether there is a current login session
 
@@ -52,6 +53,10 @@ class Process
             /* User submitted forgot password form */
             else if($_POST['tag']=='forgotPass'){
                 $this->procForgotPass();
+            }
+
+            else if($_POST['tag']=='getMarks'){
+                $this->getMark();
             }
             /* User submitted edit account form */
             else if($_POST['tag']=='editAcc'){
@@ -331,7 +336,7 @@ class Process
             while(!feof($ttfile)){
                 $ttline = fgets($ttfile);
                 $ttTab[$i]=Subject::toArray(new Subject(explode(" ",$ttline)));
-                $ttTab[$i]["type"]=trim($ttTab[$i]["type"]);
+                $ttTab[$i]["order"]=trim($ttTab[$i]["order"]);
                 $i++;
             }
             fclose($ttfile);
@@ -345,6 +350,16 @@ class Process
         }
         else{
                 $this->errorManage('Timetable not found');
+        }
+    }
+
+    function getMark(){
+        if (isset($_POST['idCard'])){
+            	$res1=$this->db->getMarksFromId(intval($_POST['idCard']));
+		echo json_encode($res1);
+        }
+        else{
+            $this->errorManage('No id specified for mark request');
         }
     }
 

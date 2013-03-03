@@ -17,6 +17,16 @@ class DB_Functions
     // destructor
     function __destruct() {}
 
+    function isUserExistFromId($id){
+        $query="SELECT * FROM $this->db_name.student WHERE  idCard='$id'";
+
+        $qRes=$this->conn->query($query);
+        if ($qRes->num_rows > 0)
+            return true;
+        else
+            return false;
+    }
+
     /**
      * Storing new user
      * returns user details
@@ -272,6 +282,43 @@ class DB_Functions
         }
         else
             return false;
+    }
+
+    public function getMarksFromId($idC){
+        if ($this->isUserExistFromId($idC)){
+            $q="SELECT type, markValue, label FROM $this->db_name.mark, $this->db_name.subject WHERE (mark.idCard=$idC) AND (mark.sId=subject.sId) ";
+            $qRes=$this->conn->query($q) or var_dump($this->conn->error);
+
+            if($qRes){
+                if($qRes->num_rows>0){
+
+
+                    $rTab['success'] = 1;
+                    $i = 0 ;
+                    do{
+                        $qTab = $qRes->fetch_assoc();
+                        $rTabInter['markLabel'] = utf8_encode($qTab['label']);
+                        $rTabInter['markType'] = $qTab['type'];
+                        $rTabInter['markValue'] = $qTab['markValue'];
+                        $tab1[$i]=$rTabInter;
+                        $i++;
+                    }while($qRes->data_seek($i));
+                    $rTab['marks']=$tab1;
+                }
+                else{
+                    $rTab['success']=0;
+                    $rTab['error_msg'] = 'No marks found';
+                }
+            }
+
+        }
+        else{
+            $rTab['success']=0;
+            $rTab['error_msg'] = 'id not found';
+        }
+
+        return $rTab;
+
     }
 }
 ?>
