@@ -27,6 +27,20 @@ class DB_Functions
             return false;
     }
 
+    function getGrpFromEmail($email){
+        $grpQ=$this->conn->query("SELECT gName FROM $this->db_name.student, $this->db_name.group
+                                          WHERE (student.grpID=group.grpID) AND (student.email = '$email')") or die($this->conn->error);
+
+        $grp=$grpQ->fetch_assoc();
+        return $grp['gName'];
+    }
+
+    function getIDFromGroup($group){
+        $q=$this->conn->query("SELECT grpID FROM $this->db_name.group WHERE group.gName='$group'");
+        $qArray=$q->fetch_assoc();
+        return (int) $qArray['grpID'];
+    }
+
     /**
      * Storing new user
      * returns user details
@@ -37,18 +51,22 @@ class DB_Functions
         $hash = $this->hashSSHA($password);
         $encrypted_password = $hash["encrypted"]; // encrypted password
         $salt = $hash["salt"]; // salt
-        $result = $this->conn->query("INSERT INTO  $this->db_name.student(idCard, displayName, fullName, email, password, gName, salt)
-                                VALUES('$cin', '$dname', '$fname', '$email','$encrypted_password','$grp','$salt')") or header('500 : Internal Server Error',true,500);
+        $userGrp=$this->getIDFromGroup($grp);
+        $result = $this->conn->query("INSERT INTO  $this->db_name.student(idCard, displayName, fullName, email, password, grpID, salt)
+                                VALUES('$cin', '$dname', '$fname', '$email','$encrypted_password','$userGrp','$salt')") or header('500 : Internal Server Error',true,500);
         // check for successful store
         if ($result<>false)
         {
             // get user details
-            $result = $this->conn->query("SELECT idCard, displayName, fullName, email, password, student.gName, created_at, last_login, salt,group.uName
+            $result = $this->conn->query("SELECT idCard, displayName, fullName, email,created_at,group.uName
                                        FROM $this->db_name.student, $this->db_name.group
-                                        WHERE (student.gName=group.gName) AND (student.email='$email')") or header('500 : Internal Server Error',true,500);
+                                        WHERE (student.grpID=group.grpID) AND (student.email='$email')") or header('500 : Internal Server Error',true,500);
 
             // return user details
-            return $result->fetch_array(MYSQL_ASSOC);
+            $resultRet=$result->fetch_assoc();
+            $resultRet['gName']=$this->getGrpFromEmail($email);
+
+            return $resultRet;
         }
         else
             return null;
@@ -60,15 +78,17 @@ class DB_Functions
     public function getUserByEmailAndPassword($email, $password)
     {
 
-        $result = $this->conn->query("SELECT idCard, displayName, fullName, email, password, student.gName, created_at, last_login, salt,group.uName
+        $result = $this->conn->query("SELECT idCard, displayName, fullName, email, password, student.grpID, created_at, last_login, salt,group.uName
                                        FROM $this->db_name.student, $this->db_name.group
-                                        WHERE (student.gName=group.gName) AND (student.email='$email')") or header('500 : Internal Server Error',true,500);
+                                        WHERE (student.grpID=group.grpID) AND (student.email='$email')") or header('500 : Internal Server Error',true,500);
         // check for result
         if ($result<>false){
             $no_of_rows = $result->num_rows;
             if ($no_of_rows > 0)
             {
                 $result = $result->fetch_assoc();
+
+                $result['gName']=$this->getGrpFromEmail($email);
                 $salt = $result['salt'];
                 $encrypted_password = $result['password'];
                 $hash = $this->checkhashSSHA($salt, $password);
@@ -222,14 +242,14 @@ class DB_Functions
                         $new_salt = $new_pass_salt['salt'];
 
                         $edit_req = $this->conn->query("UPDATE $this->db_name.student
-                                                       SET displayName='$newDn' , fullName='$newFn' , email='$newE' ,password='$new_pass' , gName = '$newG' , salt = '$new_salt'
+                                                       SET displayName='$newDn' , fullName='$newFn' , email='$newE' ,password='$new_pass' , grpID = $this->getIDFromGroup($newG) , salt = '$new_salt'
                                                        WHERE idCard = $cin") or header('500 : Internal Server Error',true,500);
 
                         if($edit_req){
                             //request to deliver an array with new details including University
-                            $edit_result = $this->conn->query("SELECT idCard, displayName, fullName, email, password, student.gName, created_at, last_login, salt,group.uName
+                            $edit_result = $this->conn->query("SELECT idCard, displayName, fullName, email, created_at,group.uName
                                        FROM $this->db_name.student, $this->db_name.group
-                                        WHERE (student.gName=group.gName) AND (student.idCard='$cin')") or header('500 : Internal Server Error',true,500);
+                                        WHERE (student.grpIDe=group.grpID) AND (student.idCard='$cin')") or header('500 : Internal Server Error',true,500);
 
                             $new_res = $edit_result->fetch_assoc();
                             $rTab['success']= 1;
@@ -238,11 +258,7 @@ class DB_Functions
                             $rTab["user"]["displayName"] = $new_res["displayName"];
                             $rTab["user"]["email"] = $new_res["email"];
                             $rTab["user"]["university"]= $new_res["uName"];
-                            $rTab["user"]["grp"]= $new_res["gName"];
-                        }
-                        else{
-                            $rTab['success']=0;
-                            $rTab['error_msg'] = 'Student edit did not go well';
+                            $rTab["user"]["grp"]= $this->getGrpFromEmail($new_res["email"]);
                         }
                     }
                     else{
@@ -263,14 +279,15 @@ class DB_Functions
     public function getUserByEmailFromSession($email)
     {
 
-        $result = $this->conn->query("SELECT idCard, displayName, fullName, email, password, student.gName, created_at, last_login, salt,group.uName
+        $result = $this->conn->query("SELECT idCard, displayName, fullName, email, created_at,group.uName
                                        FROM $this->db_name.student, $this->db_name.group
-                                        WHERE (student.gName=group.gName) AND (student.email='$email')") or header('500 : Internal Server Error',true,500);
+                                        WHERE (student.grpID=group.grpID) AND (student.email='$email')") or header('500 : Internal Server Error',true,500);
         // check for result
         if ($result<>false){
             $no_of_rows = $result->num_rows;
             if ($no_of_rows > 0)
             {
+                $result['gName']=$this->getGrpFromEmail($email);
                 $result = $result->fetch_assoc();
                 // user authentication details are correct
                 $this->conn->query("UPDATE $this->db_name.student SET last_login=NOW() WHERE student.email='$email'") or header('500 : Internal Server Error',true,500);
@@ -286,13 +303,11 @@ class DB_Functions
 
     public function getMarksFromId($idC){
         if ($this->isUserExistFromId($idC)){
-            $q="SELECT type, markValue, label FROM $this->db_name.mark, $this->db_name.subject WHERE (mark.idCard=$idC) AND (mark.sId=subject.sId) ";
+            $q="SELECT type, markValue, label FROM $this->db_name.mark, $this->db_name.subject WHERE (mark.idCard=$idC) AND (mark.sId=subject.sId) " or header('500 : Internal Server Error',true,500);
             $qRes=$this->conn->query($q) or var_dump($this->conn->error);
 
             if($qRes){
                 if($qRes->num_rows>0){
-
-
                     $rTab['success'] = 1;
                     $i = 0 ;
                     do{
@@ -310,7 +325,6 @@ class DB_Functions
                     $rTab['error_msg'] = 'No marks found';
                 }
             }
-
         }
         else{
             $rTab['success']=0;
@@ -319,6 +333,48 @@ class DB_Functions
 
         return $rTab;
 
+    }
+
+    function getTTimeTable($grpN,$univN){
+        //verify that grp + univ is available and get TimeTable ID from them
+        $verQ="SELECT tID FROM $this->db_name.group WHERE (group.gName='$grpN') AND (group.uName='$univN')";
+        $verRes=$this->conn->query($verQ) or header('500 : Internal Server Error',true,500);
+
+        if ($verRes->num_rows>0){
+            $verRes=$verRes->fetch_assoc();
+            $ttid= (int) $verRes['tID'];
+
+            //now get timetable elements from ttid
+            $tteltsQ="SELECT ttelement.name, ttelement.startHour, ttelement.duration, ttelement.room, ttelement.day, ttelement.frequency, ttelement.type, ttelement.order
+                        FROM $this->db_name.ttelement WHERE (tID = $ttid)";
+            $tteltsRes = $this->conn->query($tteltsQ) or header('500 : Internal Server Error',true,500);
+            if($tteltsRes->num_rows>0){
+                $finalRes=null;
+                $i=0;
+                while($tteltsRes->data_seek($i)){
+                    $currTab=$tteltsRes->fetch_assoc();
+                    foreach ($currTab as $key=>$value){
+                        $finalRes[$i][$key]= $value;
+                    }
+                    $i++;
+                }
+
+
+
+                $rTab['success'] = 1;
+                $rTab['timeTable'] = $finalRes;
+            }
+            else{
+                $rTab['success']=0;
+                $rTab['error_msg'] = 'No timetable found for such group';
+            }
+        }
+        else
+        {
+            $rTab['success']=0;
+            $rTab['error_msg'] = 'Group not found';
+        }
+        return $rTab;
     }
 }
 ?>

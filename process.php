@@ -36,7 +36,7 @@ class Process
         );
 
         $this->myHandler->open(__DIR__.'\sessions','');
-		
+        $this->myHandler->gc(150);
         //global $session;
         //check whether there is a current login session
 
@@ -244,9 +244,6 @@ class Process
      */
     function procEditAccount(){
         if (isset($_POST['oldEmail']) && isset($_POST['oldPassword']) && isset($_POST['newFullName']) && isset($_POST['newDisplayName'])&& isset($_POST['newGrp']) && isset($_POST['newEmail']) && isset($_POST['newPass'])) {
-            if (isset($_SESSION)) {
-                $_SESSION['email']=$_POST['newEmail']; //if a session is active , change its data with the new one
-            }
 
             echo json_encode($this->db->editUser($_POST['oldEmail'],$_POST['oldPassword'],$_POST['newEmail'],$_POST['newPass'],$_POST['newFullName'],$_POST['newDisplayName'],$_POST['newGrp']));
         }
@@ -323,34 +320,7 @@ class Process
      * Group and University or the appropriate
      */
     function getTT($grp,$univ){
-
-
-
-        if(is_readable('dashboard/timetable/'.$grp.'-'.$univ.'.csv')){
-            $ttfile=fopen('dashboard/timetable/'.$grp.'-'.$univ.'.csv','r');
-
-            $i=0;
-            $fTTtable['success']=1;
-            $ttTab=null;
-            $sub=null;
-            while(!feof($ttfile)){
-                $ttline = fgets($ttfile);
-                $ttTab[$i]=Subject::toArray(new Subject(explode(" ",$ttline)));
-                $ttTab[$i]["order"]=trim($ttTab[$i]["order"]);
-                $i++;
-            }
-            fclose($ttfile);
-            if($ttTab==null){
-                $this->errorManage('Empty timetable found');
-            }
-            else{
-                $fTTtable['timeTable']=$ttTab;
-                echo json_encode($fTTtable);
-            }
-        }
-        else{
-                $this->errorManage('Timetable not found');
-        }
+       echo json_encode($this->db->getTTimeTable($grp,$univ));
     }
 
     function getMark(){

@@ -3,8 +3,8 @@
 /**
  * Database config variables
  */
-define("DB_HOST", "localhost");
-define("DB_USER", "kayoub5_nlc");
-define("DB_PASSWORD", "data0open");
-define("DB_DATABASE", "kayoub5_nlc");
+define("DB_HOST", "127.0.0.1");
+define("DB_USER", "root");
+define("DB_PASSWORD", "");
+define("DB_DATABASE", "nlc");
 ?>
