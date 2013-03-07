@@ -11,17 +11,12 @@
 session_start();
 require_once 'include/DB_Functions.php';
 require_once 'include/session.php';
-require_once 'dashboard/timetable/subject.php';
-
 global $handler;
-
-
 
 class Process
 {
     private $db;
     private $myHandler;
-    private $validSession = false ;
     /* Class constructor */
     function Process(){
         $this->db = new DB_Functions();
@@ -36,7 +31,6 @@ class Process
         );
 
         $this->myHandler->open(__DIR__.'\sessions','');
-        $this->myHandler->gc(150);
         //global $session;
         //check whether there is a current login session
 
@@ -64,6 +58,10 @@ class Process
             }
             else if($_POST['tag']=='getUniv'){
                 $this->getUniv();
+            }
+
+            else if ($_POST['tag']='getFeeds'){
+
             }
             else if($_POST['tag']=='getGrps'){
                 if (isset($_POST['univ'])){
@@ -96,10 +94,6 @@ class Process
                 $this->errorManage("No valid operation specified");
             }
         }
-        else if ((isset($_SESSION['email']))&&($this->validSession)){
-            echo 'login based on stored session';
-        }
-
         else {
             $this->errorManage('Access denied');
         }
@@ -334,7 +328,6 @@ class Process
     }
 
 };
-
 /* Initialize process */
 $process = new Process;
 

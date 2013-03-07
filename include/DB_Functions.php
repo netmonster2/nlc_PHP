@@ -303,20 +303,53 @@ class DB_Functions
 
     public function getMarksFromId($idC){
         if ($this->isUserExistFromId($idC)){
-            $q="SELECT type, markValue, label FROM $this->db_name.mark, $this->db_name.subject WHERE (mark.idCard=$idC) AND (mark.sId=subject.sId) " or header('500 : Internal Server Error',true,500);
+            $q="SELECT type, markValue, label FROM $this->db_name.mark, $this->db_name.subject
+                WHERE (mark.idCard=$idC) AND (mark.sId=subject.sId)
+                 ORDER BY label,type ASC" or header('500 : Internal Server Error',true,500);
+
             $qRes=$this->conn->query($q) or var_dump($this->conn->error);
 
             if($qRes){
                 if($qRes->num_rows>0){
                     $rTab['success'] = 1;
                     $i = 0 ;
+                    $cptTab=0;
+                    $qTab = $qRes->fetch_assoc();
                     do{
-                        $qTab = $qRes->fetch_assoc();
-                        $rTabInter['markLabel'] = utf8_encode($qTab['label']);
-                        $rTabInter['markType'] = $qTab['type'];
-                        $rTabInter['markValue'] = $qTab['markValue'];
-                        $tab1[$i]=$rTabInter;
-                        $i++;
+
+
+                        $rTabInter['label'] = utf8_encode($qTab['label']);
+
+                        do{
+                            if ($qTab['type']=='DS'){
+                                $rTabInter['ds'] = $qTab['markValue'];
+                            }
+
+                            if ($qTab['type']=='Exam'){
+                                $rTabInter['exam'] = $qTab['markValue'];
+                            }
+
+                            if ($qTab['type']=='TP'){
+                                $rTabInter['tp'] = $qTab['markValue'];
+                            }
+                                $i++;
+                                $qRes->data_seek($i);
+                                $qTab = $qRes->fetch_assoc();
+
+                        }while($qTab['label']==$rTabInter['label']);
+
+                        if (!isset($rTabInter['ds']))
+                            $rTabInter['ds']=-1;
+
+                        if (!isset($rTabInter['exam']))
+                            $rTabInter['exam']=-1;
+
+                        if (!isset($rTabInter['tp']))
+                            $rTabInter['tp']=-1;
+
+                        $tab1[$cptTab]=$rTabInter;
+                        $cptTab++;
+
                     }while($qRes->data_seek($i));
                     $rTab['marks']=$tab1;
                 }
